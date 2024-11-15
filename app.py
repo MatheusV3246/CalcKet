@@ -122,7 +122,7 @@ class SAM_UI(Login, Autorizacao, Sessao):
                     
             pg = st.navigation(pages, position="sidebar")
             
-            cs1, cs2, cs3 = st.columns(2)
+            cs1, cs2, cs3 = st.columns(3)
             with cs2:
                 if st.button("Encerrar"):
                     self.logout()
