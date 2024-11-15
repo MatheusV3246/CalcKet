@@ -1,83 +1,154 @@
 import streamlit as st
 import pandas as pd
+import glob
+import base64
+st.set_page_config(
+    layout="wide", 
+    page_title="SAM | 3246",
+    page_icon="🏦"
+)
+from Controllers.Auth_Ver import Autorizacao
+from Controllers.Ger_Sessao import Sessao
+from Views.Pg_Login import Login
+from Views.Pg_Controle import Usuarios
+from Views.Pg_Red_Senha import Redefinir
+from Views.Pg_Calc import Calc
 
-# Configuração da página
-st.set_page_config(page_title="CalcKet", layout="centered", page_icon="📊")
+# Configuração da imagem de fundo e logotipo
+with open("Images/fundo.png", "rb") as img_file:
+    image_b64 = base64.b64encode(img_file.read()).decode()
+with open("Images/logo_SAM.png", "rb") as logo_sam_file:
+    logo_sam_b64 = base64.b64encode(logo_sam_file.read()).decode()
+with open("Images/Logo.png", "rb") as logo_file:
+    logo_b64 = base64.b64encode(logo_file.read()).decode()
 
-st.title("Calculadora de Margem de Lucro")
-st.markdown("Use esta ferramenta para calcular margens de lucro, preços sugeridos e mais.")
+st.markdown(
+    f"""
+    <style>
+    .stApp {{
+        background-image: url("data:image/png;base64,{image_b64}");
+        background-size: cover;
+    }}
 
-# Campos de entrada
-produto = st.text_input("Produto:")
-custo_fixo = st.number_input("Custo Fixo (R$)", min_value=0.0, step=0.01)
-custo_var = st.number_input("Custo Variável (R$)", min_value=0.0, step=0.01)
-imposto_fixo = st.number_input("Imposto Fixo (R$)", min_value=0.0, step=0.01)
-imposto_var = st.number_input("Imposto Variável (R$)", min_value=0.0, step=0.01)
-qtd = st.number_input("Quantidade", min_value=1, step=1)
-frete = st.number_input("Frete (R$)", min_value=0.0, step=0.01)
-mg_lucro = st.number_input("Margem Lucro (%)", min_value=0.0, step=0.1) / 100  # Convertendo para decimal
-extra = st.number_input("Extra (R$)", min_value=0.0, step=0.01)
+    [data-testid="stSidebar"] {{
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+    }}
 
-# Botão de cálculo
-if st.button("Calcular"):
-    try:
-        # Calcular custo total por unidade e preço de venda sugerido
-        despesa = (
-            (qtd * (custo_var + imposto_var)) +
-            (1 / qtd) * (custo_fixo + imposto_fixo + frete) +
-            extra
-        )
-        custo_un = (
-            (custo_var + imposto_var) +
-            (1 / qtd) * (custo_fixo + imposto_fixo + frete)
-        )
-        lucro_un = mg_lucro * custo_un
-        preco_venda = custo_un + lucro_un
-        receita = preco_venda * qtd
-        lucro = receita - despesa
+    [data-testid="stSidebar"]::before {{
+        content: "";
+        display: block;
+        height: 180px;
+        width: 200%;
+        background-image: url("data:image/png;base64,{logo_sam_b64}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        margin-top: 20px;
+    }}
+        
+    [data-testid="stSidebar"]::after {{
+        content: "";
+        display: block;
+        height: 100px;
+        width: 100%;
+        background-image: url("data:image/png;base64,{logo_b64}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        margin-bottom: 30px;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-        # Criar DataFrame com os resultados
-        dados = pd.DataFrame({
-            "Produto": [produto],
-            "Preço Sugerido": [preco_venda],
-            "Lucro Unitário": [lucro_un],
-            "Custo Unitário": [custo_un],
-            "Custo Fixo": [custo_fixo],
-            "Custo Variável": [custo_var],
-            "Imposto Fixo": [imposto_fixo],
-            "Imposto Variável": [imposto_var],
-            "Quantidade": [qtd],
-            "Frete": [frete],
-            "Margem de Lucro (%)": [mg_lucro * 100],
-            "Extra": [extra],
-            "Receita": [receita],
-            "Despesa": [despesa],
-            "Lucro Total": [lucro]
-        })
+st.markdown(
+    """
+    <style>
+    [data-testid="stMetricValue"] {
+        font-size: 30Px;
+    }
+    
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-        # Salvar os dados em Excel
-        dados.to_excel("Dados.xlsx", index=False)
+class SAM_UI(Login, Autorizacao, Sessao):
+    def __init__(self):
+        Login.__init__(self)
+        Sessao.__init__(self)
+        Autorizacao.__init__(self)
+        self.users = Usuarios()
+        
+        self.inicializar_sessao()
 
-        # Exibir resultados
-        st.success("Cálculo realizado com sucesso!")
-        st.subheader(f"Produto: {produto}")
-        st.write(f"**Preço Sugerido:** R$ {preco_venda:.2f}")
-        st.write(f"**Lucro Unitário:** R$ {lucro_un:.2f}")
-        st.write(f"**Lucro Total:** R$ {lucro:.2f}")
-        st.write(f"**Receita:** R$ {receita:.2f}")
-        st.write(f"**Despesa Total:** R$ {despesa:.2f}")
+    def inicializar_sessao(self):
+        if 'logged_in' in st.session_state and st.session_state['logged_in']:
+            self.obter_dados()
+            self.inicializar_app()
+            self.fechar_con()
+        else:
+            self.criar_tela()
+            
+    def obter_dados(self):
+        dados = self.obter_dados_usuarios()
+        st.session_state['nome'] = dados[0]
+        st.session_state['numero_pa'] = dados[1]
+        st.session_state['nome_pa'] = dados[2]
+        st.session_state['perfil'] = dados[3]
+    
+    def inicializar_app(self):
+        with st.sidebar:
+            st.write(f"Nome: {st.session_state['nome']}")
+            st.write(f"Email: {st.session_state['email']}")
+            st.write(f"Agência: {st.session_state['nome']} | Nº: {st.session_state['numero_pa']}")
+            st.write(f"Perfil: {st.session_state['perfil']}")
+                  
+            pages = {
+                "Visões": [
+                    st.Page("Views/Pg_Calc.py", title="Home", icon="🏠"),
+                    st.Page("Views/Pg_Red_Senha.py", title="Redefinir", icon="📝"),
+                    st.Page("Views/Pg_Controle.py", title="Controles", icon="⚙️"),
+                ],
+            }
+                    
+            pg = st.navigation(pages, position="sidebar")
+            st.write("Desenvolvido por Matheus Vicente")
+            
+            cs1, cs2, cs3 = st.columns(3)
+            with cs2:
+                if st.button("Sair"):
+                    st.session_state.clear()
+                    st.session_state['logged_in'] = False
+                    st.session_state['email'] = ""
+                    self.cookies["logged_in"] = "false"
+                    self.cookies["email"] = ""
+                    self.cookies.save()
+                    st.rerun()
 
-        # Mostrar tabela de resultados
-        st.dataframe(dados)
-
-        # Botão para download do arquivo Excel
-        with open("Dados.xlsx", "rb") as file:
-            st.download_button(
-                label="Baixar Resultados em Excel",
-                data=file,
-                file_name="Dados.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-    except Exception as e:
-        st.error(f"Ocorreu um erro: {e}")
+        # Renderiza a página ativa com base no título selecionado
+        if pg.title == "Home":
+            with st.spinner("Carregando..."):
+                Calc()
+        elif pg.title == "Redefinir":
+            with st.spinner("Carregando..."):
+                Redefinir()
+           
+        elif pg.title == "Controles":
+            with st.spinner("Carregando..."):
+                self.mostrar_painel()
+              
+    @Autorizacao.isAdmin
+    def mostrar_painel(self):
+        self.users.mostrar_painel_controle()
+      
+if __name__ == "__main__":
+    SAM_UI()
