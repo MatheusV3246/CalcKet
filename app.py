@@ -4,15 +4,16 @@ import glob
 import base64
 st.set_page_config(
     layout="wide", 
-    page_title="SAM | 3246",
+    page_title="CalcKet",
     page_icon="🏦"
 )
 from Controllers.Auth_Ver import Autorizacao
 from Controllers.Ger_Sessao import Sessao
 from Views.Pg_Login import Login
+from Views.Pg_Calc import Calc
 from Views.Pg_Controle import Usuarios
 from Views.Pg_Red_Senha import Redefinir
-from Views.Pg_Calc import Calc
+from time import sleep
 
 # Configuração da imagem de fundo e logotipo
 with open("Images/fundo.png", "rb") as img_file:
@@ -76,7 +77,6 @@ st.markdown(
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    manage-app-button {visibility: hidden;}
     </style>
     """,
     unsafe_allow_html=True
@@ -88,7 +88,6 @@ class SAM_UI(Login, Autorizacao, Sessao):
         Sessao.__init__(self)
         Autorizacao.__init__(self)
         self.users = Usuarios()
-        
         self.inicializar_sessao()
 
     def inicializar_sessao(self):
@@ -110,7 +109,7 @@ class SAM_UI(Login, Autorizacao, Sessao):
         with st.sidebar:
             st.write(f"Nome: {st.session_state['nome']}")
             st.write(f"Email: {st.session_state['email']}")
-            st.write(f"Agência: {st.session_state['nome']} | Nº: {st.session_state['numero_pa']}")
+            st.write(f"Agência: {st.session_state['nome_pa']} | Nº: {st.session_state['numero_pa']}")
             st.write(f"Perfil: {st.session_state['perfil']}")
                   
             pages = {
@@ -122,34 +121,34 @@ class SAM_UI(Login, Autorizacao, Sessao):
             }
                     
             pg = st.navigation(pages, position="sidebar")
-            st.write("Desenvolvido por Matheus Vicente")
             
-            cs1, cs2, cs3 = st.columns(3)
+            cs1, cs2, cs3 = st.columns(2)
             with cs2:
-                if st.button("Sair"):
-                    st.session_state.clear()
-                    st.session_state['logged_in'] = False
-                    st.session_state['email'] = ""
-                    self.cookies["logged_in"] = "false"
-                    self.cookies["email"] = ""
-                    self.cookies.save()
+                if st.button("Encerrar"):
+                    self.logout()
                     st.rerun()
 
+            st.write("Desenvolvido por Matheus Vicente")
+                    
         # Renderiza a página ativa com base no título selecionado
         if pg.title == "Home":
-            with st.spinner("Carregando..."):
+            with st.spinner("Carregando.."):
                 Calc()
+                sleep(2)
+                
         elif pg.title == "Redefinir":
-            with st.spinner("Carregando..."):
+            with st.spinner("Carregando.."):
                 Redefinir()
+                sleep(2)
            
         elif pg.title == "Controles":
-            with st.spinner("Carregando..."):
+            with st.spinner("Carregando.."):
                 self.mostrar_painel()
+                sleep(2)
               
     @Autorizacao.isAdmin
     def mostrar_painel(self):
         self.users.mostrar_painel_controle()
-      
+        
 if __name__ == "__main__":
     SAM_UI()

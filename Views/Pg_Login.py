@@ -6,20 +6,9 @@ from streamlit_cookies_manager import EncryptedCookieManager
 
 class Login(Autorizacao):
     def __init__(self):
-        super().__init__()
-        self.conn = sqlite3.connect('Data/bd_prec.db', check_same_thread=False)
-        self.cursor = self.conn.cursor()
-        
-        # Criando a tabela de usuários, caso ainda não exista, com as colunas adicionais
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS usuarios (
-                email TEXT PRIMARY KEY,
-                senha_hash TEXT,
-                nome TEXT,
-                perfil TEXT
-            )
-        ''')
-        self.conn.commit()
+        Autorizacao.__init__(self)
+        caminho = "Data/bd_users.db"
+        self.conn = sqlite3.connect(caminho, check_same_thread=False)
 
         # Inicializa o gerenciador de cookies
         self.cookies = EncryptedCookieManager(
@@ -32,20 +21,20 @@ class Login(Autorizacao):
         # Inicializa as variáveis de sessão para controle de login e email
         if 'logged_in' not in st.session_state:
             st.session_state['logged_in'] = self.cookies.get("logged_in") == "true"
+            
         if 'email' not in st.session_state:
             st.session_state['email'] = self.cookies.get("email", "")
+            
         if 'login_failed' not in st.session_state:
             st.session_state['login_failed'] = False
 
-        # Carrega o logo em base64 para exibição
-        with open("Images/Logo.png", "rb") as logo_file:
+        with open("Images/Logo_Branco.png", "rb") as logo_file:
             self.logo_b64 = base64.b64encode(logo_file.read()).decode()
-
+            
     def criar_tela(self):
-        """Exibe o layout da tela de login."""
+        # Layout do login
         col1, col2, col3, col4, col5 = st.columns(5)
         with col3:
-            # Exibe o logo no centro da coluna
             st.markdown(f"""
                 <div style="
                         content: '';
@@ -58,44 +47,35 @@ class Login(Autorizacao):
                         background-position: center;
                         margin-bottom: 30px;">
                 </div>
-            """, unsafe_allow_html=True)
+            """,unsafe_allow_html=True)
             
-            email = st.text_input("Email", value=st.session_state['email'])
+            email = st.text_input("Email", value=st.session_state.get('email',''))
             senha = st.text_input("Senha", type="password")
-            
-            # Botão de login centralizado
-            c1, c2, c3 = st.columns(3)
-            with c2:
-                if st.button("Login", type="primary", disabled=not senha):
-                    if email and senha:
-                        self.logar(email, senha)
-                    else:
-                        st.warning("Por favor, preencha ambos os campos.")
-
-            # Mensagem de erro de login
-            if st.session_state['login_failed']:
-                st.error("Falha no login: Email ou senha incorretos.")
+        
+            st.button("Login", type="primary", disabled=not senha, on_click=lambda: self.logar(email, senha), use_container_width=True)
 
     def logar(self, email, senha):
-        """Verifica as credenciais e realiza login."""
         login = self.verificar_login(email, senha)
         if login:
             st.session_state['logged_in'] = True
             st.session_state['email'] = email
             st.session_state['login_failed'] = False
+            st.session_state['button_clicked'] = False
 
             # Armazena o estado de login e o email nos cookies
             self.cookies["logged_in"] = "true"
             self.cookies["email"] = email
             self.cookies.save()
-            st.success("Login realizado com sucesso!")
         else:
             st.session_state['login_failed'] = True
+            st.warning("Senha incorreta!")
 
     def verificar_login(self, email, senha):
         """Verifica se o login é válido comparando o hash da senha."""
         senha_hash = self.hash_senha(senha)
-        result = self.conn.execute('SELECT senha_hash FROM usuarios WHERE email = ?', (email,)).fetchone()
+        cursor = self.conn.cursor()
+        result = cursor.execute('SELECT senha_hash FROM usuarios WHERE email = ?', (email,)).fetchone()
+        
         return result and result[0] == senha_hash
 
     def logout(self):
@@ -105,4 +85,3 @@ class Login(Autorizacao):
         self.cookies["logged_in"] = "false"
         self.cookies["email"] = ""
         self.cookies.save()
-        st.success("Logout realizado com sucesso!")
