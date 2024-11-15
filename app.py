@@ -76,6 +76,7 @@ st.markdown(
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    manage-app-button {visibility: hidden;}
     </style>
     """,
     unsafe_allow_html=True
